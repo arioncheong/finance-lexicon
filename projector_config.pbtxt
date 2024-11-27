@@ -1,4 +1,4 @@
 embeddings {
-  tensor_path: "https://raw.githubusercontent.com/arioncheong/finance-lexicon/refs/heads/main/vectors_100d.tsv"
-  metadata_path: "https://raw.githubusercontent.com/arioncheong/finance-lexicon/refs/heads/main/metadata.tsv"
+  tensor_path: "https://raw.githubusercontent.com/arioncheong/finance-lexicon/main/vectors_100d.tsv"
+  metadata_path: "https://raw.githubusercontent.com/arioncheong/finance-lexicon/main/metadata.tsv"
 }
