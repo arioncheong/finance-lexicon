@@ -1,4 +1,10 @@
-embeddings {
-  tensorPath: "https://raw.githubusercontent.com/arioncheong/finance-lexicon/main/vectors_100d.tsv"
-  metadataPath: "https://raw.githubusercontent.com/arioncheong/finance-lexicon/main/metadata.tsv"
+{
+  "embeddings": [
+    {
+      "tensorName": "My Embedding Tensor",
+      "tensorShape": [6349, 100],
+      "tensorPath": "https://raw.githubusercontent.com/arioncheong/finance-lexicon/main/vectors_100d.tsv",
+      "metadataPath": "https://raw.githubusercontent.com/arioncheong/finance-lexicon/main/metadata.tsv"
+    }
+  ]
 }
