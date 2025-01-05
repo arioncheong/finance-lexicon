@@ -42,12 +42,12 @@ def load_data(filepath):
 
         # Convert "Keywords" column to a list
         if "Keywords" in df.columns:
-            df["Keywords"] = df["Keywords"].apply(lambda x: x.split() if isinstance(x, str) else [])
+            df["Keywords"] = df["Keywords"].apply(lambda x: list(set(x.split())) if isinstance(x, str) else [])
 
-        # Convert AI-generated keyword columns
+        # Convert AI-generated keyword columns and remove duplicates
         for col in ["top_5_similar", "top_10_similar", "top_15_similar"]:
             if col in df.columns:
-                df[col] = df[col].apply(safe_list_conversion)
+                df[col] = df[col].apply(safe_list_conversion).apply(set)  # Remove duplicates
 
         return df
     except Exception as e:
@@ -96,12 +96,12 @@ if df is not None:
                     original_keywords.update(row["Keywords"])
                 
                 for col in ["top_5_similar", "top_10_similar", "top_15_similar"]:
-                    if col in row and isinstance(row[col], list):
+                    if col in row and isinstance(row[col], set):  # Using set to ensure uniqueness
                         ai_keywords.update(row[col])
 
             # Convert keywords to formatted text for download
-            original_keywords_formatted = "\n".join(format_keyword(kw) for kw in original_keywords)
-            all_keywords_formatted = "\n".join(format_keyword(kw) for kw in original_keywords.union(ai_keywords))
+            original_keywords_formatted = "\n".join(sorted(format_keyword(kw) for kw in original_keywords))
+            all_keywords_formatted = "\n".join(sorted(format_keyword(kw) for kw in original_keywords.union(ai_keywords)))
 
             # Convert to CSV format
             original_csv = original_keywords_formatted.encode("utf-8")
@@ -115,14 +115,12 @@ if df is not None:
                 st.download_button("📥 Download Filtered + AI-Generated Data", all_csv, "all_keywords.csv", "text/csv", key="ai_data_download")
 
             # **Display Keywords**
-            for index, row in filtered_data.iterrows():
-                if "Keywords" in row and isinstance(row["Keywords"], list):
-                    for keyword in row["Keywords"]:
-                        formatted_keyword = format_keyword(keyword)  # Format keyword before displaying
-                        
-                        if st.button(formatted_keyword, key=f"{selected_category}_{selected_subcategory}_{keyword}_{index}"):
-                            st.session_state.clicked_keyword = keyword
-                            st.session_state.selected_metadata[keyword] = row.to_dict()
+            for keyword in sorted(original_keywords):  # Sorting for consistency
+                formatted_keyword = format_keyword(keyword)  # Format keyword before displaying
+
+                if st.button(formatted_keyword, key=f"{selected_category}_{selected_subcategory}_{keyword}"):
+                    st.session_state.clicked_keyword = keyword
+                    st.session_state.selected_metadata[keyword] = filtered_data.iloc[0].to_dict()  # Use first entry
 
 else:
     st.warning("No data available. Please check the file path.")
@@ -138,12 +136,12 @@ with st.sidebar:
         # **Show AI-Generated Keywords Above Metadata**
         ai_keywords = set()
         for col in ["top_5_similar", "top_10_similar", "top_15_similar"]:
-            if col in metadata and isinstance(metadata[col], list):
+            if col in metadata and isinstance(metadata[col], set):
                 ai_keywords.update(metadata[col])
 
         if ai_keywords:
             st.write("### 🤖 AI-Generated Keywords:")
-            st.write(", ".join(format_keyword(kw) for kw in ai_keywords))
+            st.write(", ".join(sorted(format_keyword(kw) for kw in ai_keywords)))
 
         # **Metadata is always visible**
         st.write(f"**📄 Paper Title:** {metadata.get('Paper Title', 'N/A')}")
