@@ -58,7 +58,7 @@ def load_data(filepath):
 DATA_PATH = "https://raw.githubusercontent.com/arioncheong/finance-lexicon/refs/heads/main/Analysis1_merge_part.csv"
 df = load_data(DATA_PATH)
 
-# Initialize session state if not already set
+# Initialize session state
 if "selected_metadata" not in st.session_state:
     st.session_state.selected_metadata = {}
 
@@ -87,8 +87,9 @@ if df is not None:
         if selected_subcategory:
             filtered_data = df[(df["Category"] == selected_category) & (df["Subcategory"] == selected_subcategory)]
 
-            # Collect original keywords and AI-generated keywords
+            # Collect unique original keywords and AI-generated keywords
             original_keywords = set()
+            ai_keywords = set()
             keyword_metadata = {}  # Store metadata for each keyword
 
             for _, row in filtered_data.iterrows():
@@ -97,12 +98,15 @@ if df is not None:
                         formatted_kw = format_keyword(kw)
                         original_keywords.add(formatted_kw)
                         keyword_metadata[formatted_kw] = row.to_dict()  # Ensure correct metadata linkage
-
-            # Ensure AI-generated keywords are extracted properly
-            ai_keywords = set()
-            for row in filtered_data.itertuples():
+                
+                # Collect AI-generated keywords
                 for col in ["top_5_similar", "top_10_similar", "top_15_similar"]:
-                    ai_keywords.update(getattr(row, col, []))
+                    if col in row and isinstance(row[col], set):
+                        ai_keywords.update(row[col])
+
+            # If no keywords exist, show message
+            if not original_keywords:
+                st.warning("No keywords found for this selection.")
 
             # Convert keywords to formatted text for download
             original_keywords_formatted = "\n".join(sorted(original_keywords))
@@ -120,11 +124,15 @@ if df is not None:
                 st.download_button("📥 Download Filtered + AI-Generated Data", all_csv, "all_keywords.csv", "text/csv", key="ai_data_download")
 
             # **Display Keywords**
+            st.write("### Keywords:")
             for keyword in sorted(original_keywords):  # Sorting for consistency
                 if st.button(keyword, key=f"btn_{keyword}"):
                     # **Update session state properly to trigger refresh**
                     st.session_state.clicked_keyword = keyword
                     st.session_state.selected_metadata = keyword_metadata[keyword]
+
+else:
+    st.warning("No data available. Please check the file path.")
 
 # **Sidebar: Always Show Metadata**
 with st.sidebar:
