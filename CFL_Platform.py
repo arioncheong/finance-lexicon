@@ -74,7 +74,7 @@ if "selected_subcategory" not in st.session_state:
 # **📌 Sidebar: Always Visible**
 st.sidebar.header("📌 Navigation")
 
-# **Main Layout**
+# **Main Layout: Sidebar + Main Content**
 st.title("📊 Comprehensive Financial Lexicon (CFL) Explorer")
 st.markdown("Explore financial terms categorized under CFL.")
 
@@ -137,12 +137,14 @@ if df is not None:
                     st.session_state.clicked_keyword = keyword
                     st.session_state.selected_metadata = keyword_metadata[keyword]
 
-# **📌 Metadata Section (Main Area Instead of Sidebar)**
-if st.session_state.clicked_keyword:
-    keyword = st.session_state.clicked_keyword
-    metadata = st.session_state.selected_metadata
+# **📌 Sidebar: Always Visible**
+with st.sidebar:
+    st.subheader("✅ Selected Keyword Details")
 
-    with st.expander(f"🔎 **Details for: {keyword}**", expanded=True):  # Expander will show metadata
+    if st.session_state.clicked_keyword:
+        keyword = st.session_state.clicked_keyword
+        metadata = st.session_state.selected_metadata
+
         # **Show AI-Generated Keywords Above Metadata**
         ai_keywords = set()
         for col in ["top_5_similar", "top_10_similar", "top_15_similar"]:
@@ -153,7 +155,7 @@ if st.session_state.clicked_keyword:
             st.write("### 🤖 AI-Generated Keywords:")
             st.write(", ".join(sorted(format_keyword(kw) for kw in ai_keywords)))
 
-        # **Metadata**
+        # **Metadata is now updated on each click**
         st.write(f"**📄 Paper Title:** {metadata.get('Paper Title', 'N/A')}")
         st.write(f"**👨‍🏫 Author:** {metadata.get('Author', 'N/A')}")
         st.write(f"**📕 Journal:** {metadata.get('Journal', 'N/A')}")
