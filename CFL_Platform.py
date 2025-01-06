@@ -42,7 +42,7 @@ def load_data(filepath):
 
         # Convert "Keywords" column to a list
         if "Keywords" in df.columns:
-            df["Keywords"] = df["Keywords"].apply(safe_list_conversion)
+            df["Keywords"] = df["Keywords"].apply(lambda x: list(set(x.split())) if isinstance(x, str) else [])
 
         # Convert AI-generated keyword columns and remove duplicates
         for col in ["top_5_similar", "top_10_similar", "top_15_similar"]:
@@ -65,6 +65,12 @@ if "selected_metadata" not in st.session_state:
 if "clicked_keyword" not in st.session_state:
     st.session_state.clicked_keyword = None
 
+if "selected_category" not in st.session_state:
+    st.session_state.selected_category = None
+
+if "selected_subcategory" not in st.session_state:
+    st.session_state.selected_subcategory = None
+
 # Sidebar Navigation (Always Visible)
 st.sidebar.header("📌 Navigation")
 
@@ -79,15 +85,26 @@ if df is not None:
     # Select category
     selected_category = st.selectbox("Select a Category:", [""] + sorted(df["Category"].dropna().unique()))
 
+    # Reset subcategory selection if category changes
+    if selected_category != st.session_state.selected_category:
+        st.session_state.selected_category = selected_category
+        st.session_state.selected_subcategory = None  # Reset subcategory
+
     if selected_category:
         # Select subcategory
         filtered_subcategories = df[df["Category"] == selected_category]["Subcategory"].dropna().unique()
         selected_subcategory = st.selectbox("Select a Subcategory:", [""] + sorted(filtered_subcategories))
 
+        # Reset keywords if subcategory changes
+        if selected_subcategory != st.session_state.selected_subcategory:
+            st.session_state.selected_subcategory = selected_subcategory
+            st.session_state.clicked_keyword = None
+            st.session_state.selected_metadata = {}
+
         if selected_subcategory:
             filtered_data = df[(df["Category"] == selected_category) & (df["Subcategory"] == selected_subcategory)]
 
-            # Collect unique original keywords and AI-generated keywords
+            # Collect original keywords and AI-generated keywords
             original_keywords = set()
             ai_keywords = set()
             keyword_metadata = {}  # Store metadata for each keyword
@@ -131,9 +148,6 @@ if df is not None:
                     st.session_state.clicked_keyword = keyword
                     st.session_state.selected_metadata = keyword_metadata[keyword]
 
-else:
-    st.warning("No data available. Please check the file path.")
-
 # **Sidebar: Always Show Metadata**
 with st.sidebar:
     st.subheader("✅ Selected Keyword Details")
@@ -150,7 +164,7 @@ with st.sidebar:
 
         if ai_keywords:
             st.write("### 🤖 AI-Generated Keywords:")
-            st.write(", ".join(sorted(ai_keywords)))
+            st.write(", ".join(sorted(format_keyword(kw) for kw in ai_keywords)))
 
         # **Metadata is now updated on each click**
         st.write(f"**📄 Paper Title:** {metadata.get('Paper Title', 'N/A')}")
