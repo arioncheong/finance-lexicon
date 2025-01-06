@@ -71,14 +71,76 @@ if "selected_category" not in st.session_state:
 if "selected_subcategory" not in st.session_state:
     st.session_state.selected_subcategory = None
 
-# **Layout with Sidebar Always Visible**
+# **📌 Sidebar: Always Visible**
 st.sidebar.header("📌 Navigation")
-st.sidebar.subheader("✅ Selected Keyword Details")
 
 # **Main Layout: Sidebar + Main Content**
-col1, col2 = st.columns([1, 2])  # Sidebar takes 1/3, Main Content 2/3
+st.title("📊 Comprehensive Financial Lexicon (CFL) Explorer")
+st.markdown("Explore financial terms categorized under CFL.")
 
-with col1:  # Sidebar (Always Visible)
+# **📂 Browse Categories**
+st.subheader("📂 Explore Categories")
+
+if df is not None:
+    # Select category
+    selected_category = st.selectbox("Select a Category:", [""] + sorted(df["Category"].dropna().unique()))
+
+    # Reset subcategory selection if category changes
+    if selected_category != st.session_state.selected_category:
+        st.session_state.selected_category = selected_category
+        st.session_state.selected_subcategory = None  # Reset subcategory
+        st.session_state.clicked_keyword = None
+        st.session_state.selected_metadata = {}
+
+    if selected_category:
+        # Select subcategory
+        filtered_subcategories = df[df["Category"] == selected_category]["Subcategory"].dropna().unique()
+        selected_subcategory = st.selectbox("Select a Subcategory:", [""] + sorted(filtered_subcategories))
+
+        # Reset keywords if subcategory changes
+        if selected_subcategory != st.session_state.selected_subcategory:
+            st.session_state.selected_subcategory = selected_subcategory
+            st.session_state.clicked_keyword = None
+            st.session_state.selected_metadata = {}
+
+        if selected_subcategory:
+            filtered_data = df[(df["Category"] == selected_category) & (df["Subcategory"] == selected_subcategory)]
+
+            # Collect original keywords and AI-generated keywords
+            original_keywords = set()
+            ai_keywords = set()
+            keyword_metadata = {}  # Store metadata for each keyword
+
+            for _, row in filtered_data.iterrows():
+                if "Keywords" in row and isinstance(row["Keywords"], list):
+                    for kw in row["Keywords"]:
+                        formatted_kw = format_keyword(kw)
+                        original_keywords.add(formatted_kw)
+                        keyword_metadata[formatted_kw] = row.to_dict()  # Ensure correct metadata linkage
+                
+                # Collect AI-generated keywords
+                for col in ["top_5_similar", "top_10_similar", "top_15_similar"]:
+                    if col in row and isinstance(row[col], set):
+                        ai_keywords.update(row[col])
+
+            # Convert to CSV format
+            original_csv = "\n".join(sorted(original_keywords)).encode("utf-8")
+            all_csv = "\n".join(sorted(original_keywords.union(ai_keywords))).encode("utf-8")
+
+            # **Download Buttons**
+            st.download_button("📥 Download Filtered Data", original_csv, "filtered_keywords.csv", "text/csv")
+            st.download_button("📥 Download Filtered + AI-Generated Data", all_csv, "all_keywords.csv", "text/csv")
+
+            # **Display Keywords**
+            for keyword in sorted(original_keywords):
+                if st.button(keyword, key=f"btn_{keyword}"):
+                    st.session_state.clicked_keyword = keyword
+                    st.session_state.selected_metadata = keyword_metadata[keyword]
+
+# **📌 Sidebar: Always Visible**
+with st.sidebar:
+    st.subheader("✅ Selected Keyword Details")
+
     if st.session_state.clicked_keyword:
         keyword = st.session_state.clicked_keyword
         metadata = st.session_state.selected_metadata
@@ -106,62 +168,3 @@ with col1:  # Sidebar (Always Visible)
         st.write(f"**📙 Linguistic Variable - Use of Thesaurus:** {metadata.get('Linguistic Variable(s) - Use of Thesaurus', 'N/A')}")
         st.write(f"**📖 Linguistic Variable - Thesaurus Development Details:** {metadata.get('Linguistic Variable(s) - Thesaurus Development Details', 'N/A')}")
         st.write(f"**🔗 Reference:** {metadata.get('Reference', 'N/A')}")
-
-with col2:  # Main Content (Category & Subcategory Selection)
-    st.title("📊 Comprehensive Financial Lexicon (CFL) Explorer")
-    st.markdown("Explore financial terms categorized under CFL.")
-    st.subheader("📂 Browse Categories")
-
-    if df is not None:
-        # Select category
-        selected_category = st.selectbox("Select a Category:", [""] + sorted(df["Category"].dropna().unique()))
-
-        # Reset subcategory selection if category changes
-        if selected_category != st.session_state.selected_category:
-            st.session_state.selected_category = selected_category
-            st.session_state.selected_subcategory = None  # Reset subcategory
-
-        if selected_category:
-            # Select subcategory
-            filtered_subcategories = df[df["Category"] == selected_category]["Subcategory"].dropna().unique()
-            selected_subcategory = st.selectbox("Select a Subcategory:", [""] + sorted(filtered_subcategories))
-
-            # Reset keywords if subcategory changes
-            if selected_subcategory != st.session_state.selected_subcategory:
-                st.session_state.selected_subcategory = selected_subcategory
-                st.session_state.clicked_keyword = None
-                st.session_state.selected_metadata = {}
-
-            if selected_subcategory:
-                filtered_data = df[(df["Category"] == selected_category) & (df["Subcategory"] == selected_subcategory)]
-
-                # Collect original keywords and AI-generated keywords
-                original_keywords = set()
-                ai_keywords = set()
-                keyword_metadata = {}  # Store metadata for each keyword
-
-                for _, row in filtered_data.iterrows():
-                    if "Keywords" in row and isinstance(row["Keywords"], list):
-                        for kw in row["Keywords"]:
-                            formatted_kw = format_keyword(kw)
-                            original_keywords.add(formatted_kw)
-                            keyword_metadata[formatted_kw] = row.to_dict()  # Ensure correct metadata linkage
-                    
-                    # Collect AI-generated keywords
-                    for col in ["top_5_similar", "top_10_similar", "top_15_similar"]:
-                        if col in row and isinstance(row[col], set):
-                            ai_keywords.update(row[col])
-
-                # Convert to CSV format
-                original_csv = "\n".join(sorted(original_keywords)).encode("utf-8")
-                all_csv = "\n".join(sorted(original_keywords.union(ai_keywords))).encode("utf-8")
-
-                # Download Buttons
-                st.download_button("📥 Download Filtered Data", original_csv, "filtered_keywords.csv", "text/csv")
-                st.download_button("📥 Download Filtered + AI-Generated Data", all_csv, "all_keywords.csv", "text/csv")
-
-                # Display Keywords
-                for keyword in sorted(original_keywords):
-                    if st.button(keyword, key=f"btn_{keyword}"):
-                        st.session_state.clicked_keyword = keyword
-                        st.session_state.selected_metadata = keyword_metadata[keyword]
