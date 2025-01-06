@@ -42,7 +42,7 @@ def load_data(filepath):
 
         # Convert "Keywords" column to a list
         if "Keywords" in df.columns:
-            df["Keywords"] = df["Keywords"].apply(lambda x: list(set(x.split())) if isinstance(x, str) else [])
+            df["Keywords"] = df["Keywords"].apply(safe_list_conversion)
 
         # Convert AI-generated keyword columns and remove duplicates
         for col in ["top_5_similar", "top_10_similar", "top_15_similar"]:
@@ -89,19 +89,24 @@ if df is not None:
 
             # Collect original keywords and AI-generated keywords
             original_keywords = set()
-            ai_keywords = set()
+            keyword_metadata = {}  # Store metadata for each keyword
 
             for _, row in filtered_data.iterrows():
                 if "Keywords" in row and isinstance(row["Keywords"], list):
-                    original_keywords.update(row["Keywords"])
-                
+                    for kw in row["Keywords"]:
+                        formatted_kw = format_keyword(kw)
+                        original_keywords.add(formatted_kw)
+                        keyword_metadata[formatted_kw] = row.to_dict()  # Ensure correct metadata linkage
+
+            # Ensure AI-generated keywords are extracted properly
+            ai_keywords = set()
+            for row in filtered_data.itertuples():
                 for col in ["top_5_similar", "top_10_similar", "top_15_similar"]:
-                    if col in row and isinstance(row[col], set):  # Using set to ensure uniqueness
-                        ai_keywords.update(row[col])
+                    ai_keywords.update(getattr(row, col, []))
 
             # Convert keywords to formatted text for download
-            original_keywords_formatted = "\n".join(sorted(format_keyword(kw) for kw in original_keywords))
-            all_keywords_formatted = "\n".join(sorted(format_keyword(kw) for kw in original_keywords.union(ai_keywords)))
+            original_keywords_formatted = "\n".join(sorted(original_keywords))
+            all_keywords_formatted = "\n".join(sorted(original_keywords.union(ai_keywords)))
 
             # Convert to CSV format
             original_csv = original_keywords_formatted.encode("utf-8")
@@ -116,12 +121,10 @@ if df is not None:
 
             # **Display Keywords**
             for keyword in sorted(original_keywords):  # Sorting for consistency
-                formatted_keyword = format_keyword(keyword)  # Format keyword before displaying
-
-                if st.button(formatted_keyword, key=f"btn_{formatted_keyword}"):
+                if st.button(keyword, key=f"btn_{keyword}"):
                     # **Update session state properly to trigger refresh**
                     st.session_state.clicked_keyword = keyword
-                    st.session_state.selected_metadata = filtered_data[filtered_data["Keywords"].apply(lambda x: keyword in x)].iloc[0].to_dict()
+                    st.session_state.selected_metadata = keyword_metadata[keyword]
 
 # **Sidebar: Always Show Metadata**
 with st.sidebar:
@@ -139,7 +142,7 @@ with st.sidebar:
 
         if ai_keywords:
             st.write("### 🤖 AI-Generated Keywords:")
-            st.write(", ".join(sorted(format_keyword(kw) for kw in ai_keywords)))
+            st.write(", ".join(sorted(ai_keywords)))
 
         # **Metadata is now updated on each click**
         st.write(f"**📄 Paper Title:** {metadata.get('Paper Title', 'N/A')}")
