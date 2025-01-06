@@ -58,7 +58,7 @@ def load_data(filepath):
 DATA_PATH = "https://raw.githubusercontent.com/arioncheong/finance-lexicon/refs/heads/main/Analysis1_merge_part.csv"
 df = load_data(DATA_PATH)
 
-# Initialize session state
+# Initialize session state if not already set
 if "selected_metadata" not in st.session_state:
     st.session_state.selected_metadata = {}
 
@@ -118,12 +118,10 @@ if df is not None:
             for keyword in sorted(original_keywords):  # Sorting for consistency
                 formatted_keyword = format_keyword(keyword)  # Format keyword before displaying
 
-                if st.button(formatted_keyword, key=f"{selected_category}_{selected_subcategory}_{keyword}"):
+                if st.button(formatted_keyword, key=f"btn_{formatted_keyword}"):
+                    # **Update session state properly to trigger refresh**
                     st.session_state.clicked_keyword = keyword
-                    st.session_state.selected_metadata[keyword] = filtered_data.iloc[0].to_dict()  # Use first entry
-
-else:
-    st.warning("No data available. Please check the file path.")
+                    st.session_state.selected_metadata = filtered_data[filtered_data["Keywords"].apply(lambda x: keyword in x)].iloc[0].to_dict()
 
 # **Sidebar: Always Show Metadata**
 with st.sidebar:
@@ -131,7 +129,7 @@ with st.sidebar:
 
     if st.session_state.clicked_keyword:
         keyword = st.session_state.clicked_keyword
-        metadata = st.session_state.selected_metadata.get(keyword, {})
+        metadata = st.session_state.selected_metadata
 
         # **Show AI-Generated Keywords Above Metadata**
         ai_keywords = set()
@@ -143,7 +141,7 @@ with st.sidebar:
             st.write("### 🤖 AI-Generated Keywords:")
             st.write(", ".join(sorted(format_keyword(kw) for kw in ai_keywords)))
 
-        # **Metadata is always visible**
+        # **Metadata is now updated on each click**
         st.write(f"**📄 Paper Title:** {metadata.get('Paper Title', 'N/A')}")
         st.write(f"**👨‍🏫 Author:** {metadata.get('Author', 'N/A')}")
         st.write(f"**📕 Journal:** {metadata.get('Journal', 'N/A')}")
